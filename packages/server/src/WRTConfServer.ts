@@ -2,7 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as WebsocketServer } from 'ws';
 import WebSocket from 'ws';
 import { fromEvent, merge, Observable, throwError } from 'rxjs';
-import { debounceTime, filter, first, map, switchMap, takeUntil } from 'rxjs/operators';
+import { debounceTime, filter, first, map, startWith, switchMap, takeUntil } from 'rxjs/operators';
 
 export class WRTConfServer {
     private wsServer: WebsocketServer;
@@ -28,6 +28,7 @@ export class WRTConfServer {
 
         const rawMessage$ = fromEvent<MessageEvent>(socket, 'message').pipe(
             map(e => e.data),
+            startWith('ping'),
             takeUntil(closed$),
         );
 
@@ -37,7 +38,7 @@ export class WRTConfServer {
         rawMessage$.pipe(
             source => merge(source, pong$),
             debounceTime(3000),
-        ).subscribe(() => socket.close(1001, 'Client connection lost'));
+        ).subscribe(() => socket.close(1000, 'Client connection lost'));
 
         rawMessage$.pipe(filter(m => m === 'ping'))
             .subscribe(() => socket.send('pong'));

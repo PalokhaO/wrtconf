@@ -34,7 +34,7 @@ export class WRTConf {
         ).subscribe(() => socket.send('ping'));
         rawMessage$.pipe(
             debounceTime(3000),
-        ).subscribe(() => socket.close(1001, 'Server connection lost'));
+        ).subscribe(() => socket.close(1000, 'Server connection lost'));
         
         const message$ = rawMessage$.pipe(
             filter(m => m !== 'pong'),
