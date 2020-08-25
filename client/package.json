@@ -20,5 +20,9 @@
   "devDependencies": {
     "tslib": "^2.0.1",
     "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@wrtconf/models": "1.0.0",
+    "rxjs": "^6.6.2"
   }
 }

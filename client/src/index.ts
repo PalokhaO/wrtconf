@@ -1,1 +1,1 @@
-export const packageName: string = 'client';
+export * from './WRTConf';

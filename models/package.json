@@ -1,0 +1,19 @@
+{
+  "name": "@wrtconf/models",
+  "version": "1.0.0",
+  "description": "WRTConf server",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PalokhaO/wrtconf.git"
+  },
+  "author": "Palokha Oleksandr",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PalokhaO/wrtconf/issues"
+  },
+  "homepage": "https://github.com/PalokhaO/wrtconf#readme"
+}

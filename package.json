@@ -7,7 +7,7 @@
   "author": "Oleksandr Palokha <palokha.oa@gmail.com>",
   "license": "MIT",
   "private": true,
-  "workspaces": ["client", "server"],
+  "workspaces": ["client", "server", "models"],
   "scripts": {
     "build": "cd server && yarn build && cd ../client && yarn build"
   }
