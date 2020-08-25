@@ -6,7 +6,7 @@ import { debounceTime, filter, first, map, switchMap, takeUntil } from 'rxjs/ope
 
 export class WRTConfServer {
     private wsServer: WebsocketServer;
-    private connections: Connection[];
+    private connections: Connection[] = [];
 
     constructor(private httpServer: HttpServer, private path = '') {
         this.wsServer = new WebsocketServer({

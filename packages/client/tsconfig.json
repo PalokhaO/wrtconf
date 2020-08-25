@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "incremental": true,
-        "module": "ESNext",
+        "module": "CommonJS",
         "moduleResolution": "Node",
         "allowJs": true,
         "esModuleInterop": true,
@@ -9,7 +9,7 @@
         "experimentalDecorators": true,
         "forceConsistentCasingInFileNames": true,
         "skipLibCheck": true,
-        "target": "esnext",
+        "target": "es2015",
         "outDir": "output",
         "declarationDir": "output",
         "declaration": true,
@@ -19,7 +19,6 @@
         "allowSyntheticDefaultImports": true,
         "noImplicitAny": false,
         "strictNullChecks": false,
-        "types": ["node"],
     },
     "include": [
         "src/**/*"

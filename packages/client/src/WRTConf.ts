@@ -4,7 +4,7 @@ import { map, takeUntil, filter, debounceTime, switchMap, first } from 'rxjs/ope
 export class WRTConf {
     private options: WRTConfOptions = {};
     private socket: WebSocket;
-    private message$: Subject<any>;
+    message$ = new Subject<any>();
 
     constructor(private url: string, options: Partial<WRTConfOptions> = {}) {
         this.options = {
@@ -42,6 +42,7 @@ export class WRTConf {
             source => merge(source, error$),
         );
         message$.subscribe(this.message$);
+        this.socket = socket;
     }
 }
 
