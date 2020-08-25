@@ -1,1 +1,1 @@
-export const packageName: string = 'server';
+export * from './WRTConfServer';

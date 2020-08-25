@@ -1,5 +1,5 @@
 import { Subject, fromEvent, throwError, merge } from 'rxjs';
-import { map, takeUntil, filter, debounceTime, switchMap } from 'rxjs/operators';
+import { map, takeUntil, filter, debounceTime, switchMap, first } from 'rxjs/operators';
 
 export class WRTConf {
     private options: WRTConfOptions = {};
@@ -19,7 +19,7 @@ export class WRTConf {
         const socket = new WebSocket(this.url);
         this.socket?.close?.();
 
-        const closed$ = fromEvent(socket, 'close');
+        const closed$ = fromEvent(socket, 'close').pipe(first());
         const error$ = fromEvent(socket, 'error').pipe(
             switchMap(() => throwError(new Error('WebSocket connection error'))),
             takeUntil(closed$),
