@@ -1,6 +1,11 @@
 import { Serializable } from "./utils";
 
-export type ClientMessage = ClientOfferMessage | ClientAnswerMessage | ClientMetaMessage;
+export type ClientMessage = ClientMetaMessage | ClientOfferMessage | ClientAnswerMessage;
+
+export interface ClientMetaMessage {
+    type: 'meta';
+    meta: Serializable;
+}
 
 export interface ClientOfferMessage {
     type: 'offer';
@@ -14,17 +19,12 @@ export interface ClientAnswerMessage {
     answer: RTCSessionDescriptionInit;
 }
 
-export interface ClientMetaMessage {
-    type: 'meta';
-    meta: Serializable;
-}
+export type ServerMessage = ServerClientsMessage | ServerOfferMessage
+    | ServerAnswerMessage;
 
-export type ServerMessage = ServerConnectMessage | ServerOfferMessage
-    | ServerAnswerMessage | ServerMetaMessage | ServerDisconnectMessage;
-
-export interface ServerConnectMessage {
-    type: 'connect';
-    from: string;
+export interface ServerClientsMessage {
+    type: 'clients';
+    clients: {id: string, meta: Serializable}[];
 }
 
 export interface ServerOfferMessage {
@@ -37,15 +37,4 @@ export interface ServerAnswerMessage {
     type: 'answer';
     from: string;
     answer: RTCSessionDescriptionInit;
-}
-
-export interface ServerMetaMessage {
-    type: 'meta';
-    from: string;
-    meta: Serializable;
-}
-
-export interface ServerDisconnectMessage {
-    type: 'disconnect';
-    from: string;
 }

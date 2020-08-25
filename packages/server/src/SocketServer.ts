@@ -3,25 +3,35 @@ import { Server as WebsocketServer } from 'ws';
 import WebSocket from 'ws';
 import { BehaviorSubject, fromEvent, merge, Observable, throwError } from 'rxjs';
 import { debounceTime, filter, first, map, share, shareReplay, startWith, switchMap, takeUntil } from 'rxjs/operators';
-import { ClientMessage, ServerMessage } from '../../models';
+import { ClientMessage, ClientMetaMessage, Serializable, ServerMessage } from '../../models';
 import { v4 } from 'uuid';
 
 export class SocketServer {
-    private wsServer: WebsocketServer;
     private connections: SocketConnection[] = [];
     private _connections$ = new BehaviorSubject<SocketConnection[]>([]);
     connections$ = this._connections$.asObservable();
 
-    constructor(private httpServer: HttpServer, private path = '') {
-        this.wsServer = new WebsocketServer({
+    constructor(httpServer: HttpServer, path = '') {
+        const wsServer = new WebsocketServer({
             path,
             server: httpServer,
         });
-        this.wsServer.on('connection', ws => this.handleConnection(ws));
-        this.wsServer.on('close', () => this._connections$.complete());
+        wsServer.on('connection', socket => this.initConnection(socket));
+        wsServer.on('close', () => this._connections$.complete());
+        this._connections$.subscribe(connections => connections.forEach(connection => {
+            connection.send({
+                type: "clients",
+                clients: connections
+                    .filter(c => c !== connection)
+                    .map(c => ({
+                        id: c.id,
+                        meta: c.meta,
+                    }))
+            })
+        }));
     }
 
-    private handleConnection(socket: WebSocket) {
+    private initConnection(socket: WebSocket) {
         this.keepAlive(socket);
 
         const closed$ = fromEvent(socket, 'close').pipe(
@@ -35,7 +45,7 @@ export class SocketServer {
         );
         
         
-        const message$ = fromEvent<MessageEvent>(socket, 'message').pipe(
+        const message$: Observable<ClientMessage> = fromEvent<MessageEvent>(socket, 'message').pipe(
             map(e => e.data),
             filter(m => m && m !== 'ping'),
             map(m => JSON.parse(m)),
@@ -44,30 +54,28 @@ export class SocketServer {
             share(),
         );
 
-        const connection = {
+        message$.pipe(filter((m): m is ClientMetaMessage => m.type === 'meta'))
+            .subscribe(m => this.setMeta(connection, m.meta));
+
+        const connection: SocketConnection = {
             id: v4(),
-            socket,
+            meta: null,
             message$,
             send: message => socket.send(JSON.stringify(message)),
         }
 
         closed$.subscribe(() => this.disconnect(connection));
-        this.connect(connection)
     }
 
-    private connect(connection: SocketConnection) {
-        this.connections = [
-            ...this.connections,
-            connection,
-        ];
-        this.connections.forEach(c => {
-            if (c !== connection) {
-                c.send({
-                    type: 'connect',
-                    from: connection.id,
-                });
-            }
-        });
+    private setMeta(connection: SocketConnection, meta: Serializable) {
+        connection.meta = meta;
+        if (!this.connections.includes(connection)) {
+            this.connections = [
+                ...this.connections,
+                connection,
+            ];
+        }
+        
         this._connections$.next(this.connections);
     }
 
@@ -103,8 +111,8 @@ export class SocketServer {
 }
 
 export interface SocketConnection {
-    socket: WebSocket;
     id: string;
+    meta: Serializable;
     message$: Observable<ClientMessage>;
     send: (message: ServerMessage) => void;
 }

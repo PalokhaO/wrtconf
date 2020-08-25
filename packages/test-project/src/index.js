@@ -19,7 +19,7 @@ const script = streamToString(
 const app = express();
 
 
-    app.get('/test', (req, res, next) => {
+    app.get('/', (req, res, next) => {
         script.then(script => {
             res.send(`
                 <script>${script}</script>
