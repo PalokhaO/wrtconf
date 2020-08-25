@@ -1,11 +1,6 @@
 import { Serializable } from "./utils";
 
-export type ClientMessage = ClientConnectMessage | ClientOfferMessage |
-    ClientAnswerMessage | ClientMetaMessage;
-
-export interface ClientConnectMessage {
-    type: 'connect';
-}
+export type ClientMessage = ClientOfferMessage | ClientAnswerMessage | ClientMetaMessage;
 
 export interface ClientOfferMessage {
     type: 'offer';
@@ -21,7 +16,6 @@ export interface ClientAnswerMessage {
 
 export interface ClientMetaMessage {
     type: 'meta';
-    from: string;
     meta: Serializable;
 }
 

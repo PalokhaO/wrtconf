@@ -1,14 +1,16 @@
 import { Server as HttpServer } from 'http';
 import { Server as WebsocketServer } from 'ws';
 import WebSocket from 'ws';
-import { fromEvent, merge, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, fromEvent, merge, Observable, throwError } from 'rxjs';
 import { debounceTime, filter, first, map, share, shareReplay, startWith, switchMap, takeUntil } from 'rxjs/operators';
 import { ClientMessage, ServerMessage } from '../../models';
 import { v4 } from 'uuid';
 
 export class SocketServer {
     private wsServer: WebsocketServer;
-    private connections: Connection[] = [];
+    private connections: SocketConnection[] = [];
+    private _connections$ = new BehaviorSubject<SocketConnection[]>([]);
+    connections$ = this._connections$.asObservable();
 
     constructor(private httpServer: HttpServer, private path = '') {
         this.wsServer = new WebsocketServer({
@@ -16,6 +18,7 @@ export class SocketServer {
             server: httpServer,
         });
         this.wsServer.on('connection', ws => this.handleConnection(ws));
+        this.wsServer.on('close', () => this._connections$.complete());
     }
 
     private handleConnection(socket: WebSocket) {
@@ -52,7 +55,7 @@ export class SocketServer {
         this.connect(connection)
     }
 
-    private connect(connection: Connection) {
+    private connect(connection: SocketConnection) {
         this.connections = [
             ...this.connections,
             connection,
@@ -65,16 +68,12 @@ export class SocketServer {
                 });
             }
         });
+        this._connections$.next(this.connections);
     }
 
-    private disconnect(connection: Connection) {
+    private disconnect(connection: SocketConnection) {
         this.connections = this.connections.filter(c => c !== connection);
-        this.connections.forEach(c => {
-            c.send({
-                type: 'disconnect',
-                from: connection.id,
-            });
-        });
+        this._connections$.next(this.connections);
     }
 
     private keepAlive(socket: WebSocket) {
@@ -103,7 +102,7 @@ export class SocketServer {
     }
 }
 
-interface Connection {
+export interface SocketConnection {
     socket: WebSocket;
     id: string;
     message$: Observable<ClientMessage>;
