@@ -1,5 +1,6 @@
 import { Subject, fromEvent, throwError, merge } from 'rxjs';
 import { map, takeUntil, filter, debounceTime, switchMap, first } from 'rxjs/operators';
+import { Serializable } from '@wrtconf/models';
 
 export class WRTConf {
     private options: WRTConfOptions = {};
@@ -44,9 +45,22 @@ export class WRTConf {
         message$.subscribe(this.message$);
         this.socket = socket;
     }
-}
 
-type Serializable = null | string | number | {[key: string]: Serializable} | Serializable[];
+    // private generateOffer() {
+    //     const peerConnection = new RTCPeerConnection({
+    //         iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
+    //     });
+    //     signalingChannel.addEventListener('message', async message => {
+    //         if (message.answer) {
+    //             const remoteDesc = new RTCSessionDescription(message.answer);
+    //             await peerConnection.setRemoteDescription(remoteDesc);
+    //         }
+    //     });
+    //     const offer = await peerConnection.createOffer();
+    //     await peerConnection.setLocalDescription(offer);
+    //     signalingChannel.send({'offer': offer});
+    // }
+}
 
 interface WRTConfOptions {
     meta?: Serializable;

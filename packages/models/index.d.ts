@@ -1,1 +1,2 @@
-export type Test = 'test';
+export * from './messages';
+export * from './utils';
