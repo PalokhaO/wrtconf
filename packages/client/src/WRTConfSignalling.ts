@@ -2,8 +2,9 @@ import { ClientMessage, Serializable, ServerAnswerMessage, ServerMessage, Server
 import { Observable, Subject } from "rxjs";
 
 export class WRTConfSignalling {
-    private clients: Client[] = [];
+    clients: Client[] = [];
     message$ = new Subject<ClientMessage>();
+    private connectionInitialised = false;
 
     constructor(message$: Observable<ServerMessage>) {
         message$.subscribe(m => this.handleMessage(m));
@@ -33,8 +34,12 @@ export class WRTConfSignalling {
         this.clients = this.clients
             .filter(c => !removedClients.includes(c))
             .concat(newClients);
-        newClients.forEach(client => this.initNewClient(client));
-        removedClients.forEach(client => this.disconnect(client));
+        if (this.connectionInitialised) {
+            newClients.forEach(client => this.initNewClient(client));
+            removedClients.forEach(client => this.disconnect(client));
+        } else {
+            this.connectionInitialised = true;
+        }
     }
 
     private async initNewClient(client: Client) {
@@ -63,15 +68,12 @@ export class WRTConfSignalling {
             to: message.from,
             answer,
         });
+        await client.connection.setLocalDescription(answer);
     }
 
     private async handleAnswer(message: ServerAnswerMessage) {
         const client = this.clients.find(c => c.id === message.from);
-        if (client.connection.connectionState !== 'connected') {
-            this.disconnect(client);
-            client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
-            await client.connection.setRemoteDescription(message.answer);
-        }
+        await client.connection.setRemoteDescription(message.answer);
     }
 }
 

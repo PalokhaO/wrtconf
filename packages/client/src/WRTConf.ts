@@ -4,12 +4,13 @@ import { WRTConfSignalling } from './WRTConfSignalling';
 import { WRTConfSocket } from './WRTConfSocket';
 
 export class WRTConf {
+    signalling: WRTConfSignalling;
     message$ = new Subject<any>();
 
     constructor(private url: string, options: Partial<WRTConfOptions> = {}) {
         const socket = new WRTConfSocket(url, options.meta);
-        const signalling = new WRTConfSignalling(socket.message$);
-        signalling.message$.subscribe(m => socket.send(m));
+        this.signalling = new WRTConfSignalling(socket.message$);
+        this.signalling.message$.subscribe(m => socket.send(m));
     }
 }
 
