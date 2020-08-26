@@ -32,6 +32,7 @@ export type ServerMessage = ServerClientsMessage | ServerOfferMessage
 export interface ServerClientsMessage {
     type: 'clients';
     clients: {id: string, meta: Serializable}[];
+    from?: undefined;
 }
 
 export interface ServerOfferMessage {

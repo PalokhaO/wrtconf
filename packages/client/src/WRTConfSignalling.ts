@@ -1,33 +1,37 @@
 import { ClientCandidateMessage, ClientMessage, Serializable, ServerAnswerMessage, ServerCandidateMessage, ServerMessage, ServerOfferMessage } from "@wrtconf/models";
-import { fromEvent, Observable, Subject } from "rxjs";
+import { BehaviorSubject, fromEvent, Observable, Subject } from "rxjs";
 import { filter, map } from "rxjs/operators";
 
 export class WRTConfSignalling {
-    clients: Client[] = [];
-    message$ = new Subject<ClientMessage>();
+    private clients: Client[] = [];
     private connectionInitialised = false;
+    message$ = new Subject<ClientMessage>();
+    clients$ = new BehaviorSubject<Client[]>(this.clients);
 
     constructor(message$: Observable<ServerMessage>, private stream: MediaStream) {
         message$.subscribe(m => this.handleMessage(m));
     }
 
-    private handleMessage(message: ServerMessage) {
+    private async handleMessage(message: ServerMessage) {
+        const client = this.clients.find(c => c.id == message.from);
         switch(message.type) {
             case 'clients':
-                this.updateClients(message.clients);
+                await this.handleClients(message.clients);
                 break;
             case 'offer':
-                this.handleOffer(message);
+                await this.handleOffer(message, client);
                 break;
             case 'answer':
-                this.handleAnswer(message);
+                await this.handleAnswer(message, client);
                 break;
             case 'candidate':
-                this.handleCandidate(message);
+                await this.handleCandidate(message, client);
+                break;
         }
+        this.clients$.next(this.clients);
     }
 
-    private updateClients(clients: {id: string, meta: Serializable}[]) {
+    private async handleClients(clients: {id: string, meta: Serializable}[]) {
         const newClients = clients.filter(client =>
             !this.clients.some(existing => existing.id === client.id)
         );
@@ -38,13 +42,33 @@ export class WRTConfSignalling {
             .filter(c => !removedClients.includes(c))
             .concat(newClients);
         if (this.connectionInitialised) {
-            newClients.forEach(client => this.initNewClient(client));
             removedClients.forEach(client => this.disconnect(client));
+            await Promise.all(newClients.map(client => this.initNewClient(client)));
         } else {
             this.connectionInitialised = true;
         }
     }
 
+    private async handleOffer(message: ServerOfferMessage, client: Client) {
+        this.initRTCConnection(client);
+        await client.connection.setRemoteDescription(message.offer);
+        const answer = await client.connection.createAnswer();
+        this.message$.next({
+            type: 'answer',
+            to: message.from,
+            answer,
+        });
+        await client.connection.setLocalDescription(answer);
+    }
+
+    private async handleAnswer(message: ServerAnswerMessage, client: Client) {
+        await client.connection.setRemoteDescription(message.answer);
+    }
+
+    private async handleCandidate(message: ServerCandidateMessage, client: Client) {
+        await client.connection?.addIceCandidate(message.candidate);
+    }
+    
     private async initNewClient(client: Client) {
         this.initRTCConnection(client);
         const offer = await client.connection.createOffer();
@@ -58,29 +82,6 @@ export class WRTConfSignalling {
 
     private disconnect(client: Client) {
         client.connection?.close();
-    }
-
-    private async handleOffer(message: ServerOfferMessage) {
-        const client = this.clients.find(c => c.id === message.from);
-        this.initRTCConnection(client);
-        await client.connection.setRemoteDescription(message.offer);
-        const answer = await client.connection.createAnswer();
-        this.message$.next({
-            type: 'answer',
-            to: message.from,
-            answer,
-        });
-        await client.connection.setLocalDescription(answer);
-    }
-
-    private async handleAnswer(message: ServerAnswerMessage) {
-        const client = this.clients.find(c => c.id === message.from);
-        await client.connection.setRemoteDescription(message.answer);
-    }
-
-    private handleCandidate(message: ServerCandidateMessage) {
-        const client = this.clients.find(c => c.id === message.from);
-        client.connection?.addIceCandidate(message.candidate);
     }
 
     private initRTCConnection(client: Client) {
@@ -104,7 +105,7 @@ export class WRTConfSignalling {
     }
 }
 
-interface Client {
+export interface Client {
     id: string;
     meta: Serializable;
     stream?: MediaStream;
