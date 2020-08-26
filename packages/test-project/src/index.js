@@ -29,6 +29,6 @@ const app = express();
         }).catch(console.error);
     })
 
-const server = app.listen(process.env.PORT ?? 8080);
+const server = app.listen(process.env.PORT || 8080);
 
 const wrtConfServer = new WRTConfServer(server, '/wrtconf');
