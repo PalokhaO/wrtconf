@@ -9,6 +9,10 @@ export class WRTConfSocket {
     constructor(private url: string, meta: Serializable = null) {
         this.initSocket(meta);
     }
+    
+    send(message: ClientMessage) {
+        this.socket.send(JSON.stringify(message));
+    }
 
     updateMeta(meta: Serializable) {
         this.send({
@@ -72,9 +76,5 @@ export class WRTConfSocket {
             socket.onopen = res;
             socket.onerror = rej;
         });
-    }
-
-    private send(message: ClientMessage) {
-        this.socket.send(JSON.stringify(message));
     }
 }
