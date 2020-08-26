@@ -17,7 +17,7 @@ export class SignallingServer {
             case 'offer':
                 connections
                     .find(c => c.id === message.to)
-                    ?.send?.({
+                    ?.send({
                         type: 'offer',
                         from: connection.id,
                         offer: message.offer,
@@ -26,10 +26,19 @@ export class SignallingServer {
             case 'answer':
                 connections
                     .find(c => c.id === message.to)
-                    ?.send?.({
+                    ?.send({
                         type: 'answer',
                         from: connection.id,
                         answer: message.answer,
+                    });
+                break;
+            case 'candidate':
+                connections
+                    .find(c => c.id === message.to)
+                    ?.send({
+                        type: 'candidate',
+                        from: connection.id,
+                        candidate: message.candidate,
                     });
                 break;
         }

@@ -1,5 +1,6 @@
-import { ClientMessage, Serializable, ServerAnswerMessage, ServerMessage, ServerOfferMessage } from "@wrtconf/models";
-import { Observable, Subject } from "rxjs";
+import { ClientCandidateMessage, ClientMessage, Serializable, ServerAnswerMessage, ServerCandidateMessage, ServerMessage, ServerOfferMessage } from "@wrtconf/models";
+import { fromEvent, Observable, Subject } from "rxjs";
+import { filter, map } from "rxjs/operators";
 
 export class WRTConfSignalling {
     clients: Client[] = [];
@@ -21,6 +22,8 @@ export class WRTConfSignalling {
             case 'answer':
                 this.handleAnswer(message);
                 break;
+            case 'candidate':
+                this.handleCandidate(message);
         }
     }
 
@@ -44,7 +47,20 @@ export class WRTConfSignalling {
 
     private async initNewClient(client: Client) {
         client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
-        const offer = await client.connection.createOffer();
+        const candidate$: Observable<ClientCandidateMessage> =
+            fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
+                filter(e => !!e.candidate),
+                map(ev => ({
+                    type: 'candidate',
+                    to: client.id,
+                    candidate: ev.candidate,
+                })),
+            );
+        candidate$.subscribe(this.message$);
+        const offer = await client.connection.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+        });
         await client.connection.setLocalDescription(offer);
         this.message$.next({
             type: "offer",
@@ -54,7 +70,7 @@ export class WRTConfSignalling {
     }
 
     private disconnect(client: Client) {
-        client.connection?.close?.();
+        client.connection?.close();
     }
 
     private async handleOffer(message: ServerOfferMessage) {
@@ -62,7 +78,10 @@ export class WRTConfSignalling {
         this.disconnect(client);
         client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
         await client.connection.setRemoteDescription(message.offer);
-        const answer = await client.connection.createAnswer();
+        const answer = await client.connection.createAnswer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+        });
         this.message$.next({
             type: 'answer',
             to: message.from,
@@ -74,6 +93,11 @@ export class WRTConfSignalling {
     private async handleAnswer(message: ServerAnswerMessage) {
         const client = this.clients.find(c => c.id === message.from);
         await client.connection.setRemoteDescription(message.answer);
+    }
+
+    private handleCandidate(message: ServerCandidateMessage) {
+        const client = this.clients.find(c => c.id === message.from);
+        client.connection?.addIceCandidate(message.candidate);
     }
 }
 

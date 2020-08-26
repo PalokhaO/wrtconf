@@ -22,7 +22,7 @@ export class WRTConfSocket {
     }
 
     private async initSocket(meta: Serializable) {
-        this.socket?.close?.();
+        this.socket?.close();
         const socket = new WebSocket(this.url);
         await this.open(socket);
         this.socket = socket;
