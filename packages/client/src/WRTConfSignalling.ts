@@ -2,6 +2,9 @@ import { ClientCandidateMessage, ClientMessage, Serializable, ServerAnswerMessag
 import { BehaviorSubject, fromEvent, Observable, Subject } from "rxjs";
 import { filter, map } from "rxjs/operators";
 
+const videoBitrate = 750000;
+const audioBitrate = 24000;
+
 export class WRTConfSignalling {
     private clients: Client[] = [];
     private connectionInitialised = false;
@@ -89,9 +92,20 @@ export class WRTConfSignalling {
         client.stream = new MediaStream();
         client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
         client.connection.ontrack = e => client.stream.addTrack(e.track);
-        this.stream.getTracks().forEach(track =>
-            client.connection.addTrack(track)
-        );
+        this.stream.getTracks().forEach(async track => {
+            const sender = await client.connection.addTrack(track);
+            const params = sender.getParameters();
+            sender.setParameters({
+                ...params,
+                encodings: params.encodings.map(e => ({
+                    ...e,
+                    maxBitrate: track.kind === 'video'
+                        ? videoBitrate
+                        : audioBitrate,
+                })),
+            });
+            console.log(sender);
+        });
         const candidate$: Observable<ClientCandidateMessage> =
             fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
                 filter(e => !!e.candidate),

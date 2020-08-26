@@ -8,8 +8,11 @@ function createVideo(id) {
     return video;
 }
 
-navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(stream => {
+navigator.mediaDevices.getUserMedia({audio: true, video: {
+    sampleRate: 5,
+}}).then(stream => {
     const conf = new WRTConf('ws://localhost:8080/wrtconf', stream);
+    console.log(conf);
 
     conf.clients$.subscribe(clients => clients.forEach(client => {
         if (client.stream) {
