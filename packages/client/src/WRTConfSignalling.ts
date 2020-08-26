@@ -7,7 +7,7 @@ export class WRTConfSignalling {
     message$ = new Subject<ClientMessage>();
     private connectionInitialised = false;
 
-    constructor(message$: Observable<ServerMessage>) {
+    constructor(message$: Observable<ServerMessage>, private stream: MediaStream) {
         message$.subscribe(m => this.handleMessage(m));
     }
 
@@ -46,21 +46,8 @@ export class WRTConfSignalling {
     }
 
     private async initNewClient(client: Client) {
-        client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
-        const candidate$: Observable<ClientCandidateMessage> =
-            fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
-                filter(e => !!e.candidate),
-                map(ev => ({
-                    type: 'candidate',
-                    to: client.id,
-                    candidate: ev.candidate,
-                })),
-            );
-        candidate$.subscribe(this.message$);
-        const offer = await client.connection.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-        });
+        this.initRTCConnection(client);
+        const offer = await client.connection.createOffer();
         await client.connection.setLocalDescription(offer);
         this.message$.next({
             type: "offer",
@@ -75,13 +62,9 @@ export class WRTConfSignalling {
 
     private async handleOffer(message: ServerOfferMessage) {
         const client = this.clients.find(c => c.id === message.from);
-        this.disconnect(client);
-        client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+        this.initRTCConnection(client);
         await client.connection.setRemoteDescription(message.offer);
-        const answer = await client.connection.createAnswer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-        });
+        const answer = await client.connection.createAnswer();
         this.message$.next({
             type: 'answer',
             to: message.from,
@@ -99,10 +82,31 @@ export class WRTConfSignalling {
         const client = this.clients.find(c => c.id === message.from);
         client.connection?.addIceCandidate(message.candidate);
     }
+
+    private initRTCConnection(client: Client) {
+        this.disconnect(client);
+        client.stream = new MediaStream();
+        client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+        client.connection.ontrack = e => client.stream.addTrack(e.track);
+        this.stream.getTracks().forEach(track =>
+            client.connection.addTrack(track)
+        );
+        const candidate$: Observable<ClientCandidateMessage> =
+            fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
+                filter(e => !!e.candidate),
+                map(ev => ({
+                    type: 'candidate',
+                    to: client.id,
+                    candidate: ev.candidate,
+                })),
+            );
+        candidate$.subscribe(this.message$);
+    }
 }
 
 interface Client {
     id: string;
     meta: Serializable;
+    stream?: MediaStream;
     connection?: RTCPeerConnection;
 }

@@ -7,9 +7,9 @@ export class WRTConf {
     signalling: WRTConfSignalling;
     message$ = new Subject<any>();
 
-    constructor(private url: string, options: Partial<WRTConfOptions> = {}) {
+    constructor(private url: string, private stream: MediaStream, options: Partial<WRTConfOptions> = {}) {
         const socket = new WRTConfSocket(url, options.meta);
-        this.signalling = new WRTConfSignalling(socket.message$);
+        this.signalling = new WRTConfSignalling(socket.message$, stream);
         this.signalling.message$.subscribe(m => socket.send(m));
     }
 }
