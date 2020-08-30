@@ -8,11 +8,24 @@ const audioBitrate = 24000;
 export class WRTConfSignalling {
     private clients: Client[] = [];
     private connectionInitialised = false;
+    source = new MediaStream();
     message$ = new Subject<ClientMessage>();
     clients$ = new BehaviorSubject<Client[]>(this.clients);
 
-    constructor(message$: Observable<ServerMessage>, private stream: MediaStream) {
+    constructor(message$: Observable<ServerMessage>, stream?: MediaStream) {
         message$.subscribe(m => this.handleMessage(m));
+        this.setSource(stream);
+    }
+
+    setSource(stream: MediaStream) {
+        this.source = stream;
+        const connections = this.clients
+            .map(c => c.connection)
+            .filter(Boolean);
+        connections.forEach(connection => {
+            connection.getSenders().forEach(s => connection.removeTrack(s));
+            stream.getTracks().forEach(t => connection.addTrack(t));
+        });
     }
 
     private async handleMessage(message: ServerMessage) {
@@ -34,10 +47,10 @@ export class WRTConfSignalling {
         this.clients$.next(this.clients);
     }
 
-    private async handleClients(clients: {id: string, meta: Serializable}[]) {
-        const newClients = clients.filter(client =>
-            !this.clients.some(existing => existing.id === client.id)
-        );
+    private async handleClients(clients: SignallingClient[]) {
+        const newClients = clients
+            .filter(client => !this.clients.some(existing => existing.id === client.id))
+            .map(client => this.toClient(client));
         const removedClients = this.clients.filter(client =>
             !clients.some(newClient => newClient.id === client.id)
         );
@@ -53,7 +66,7 @@ export class WRTConfSignalling {
     }
 
     private async handleOffer(message: ServerOfferMessage, client: Client) {
-        this.initRTCConnection(client);
+        this.initICESignalling(client);
         await client.connection.setRemoteDescription(message.offer);
         const answer = await client.connection.createAnswer();
         this.message$.next({
@@ -73,7 +86,7 @@ export class WRTConfSignalling {
     }
     
     private async initNewClient(client: Client) {
-        this.initRTCConnection(client);
+        this.initICESignalling(client);
         const offer = await client.connection.createOffer();
         await client.connection.setLocalDescription(offer);
         this.message$.next({
@@ -87,25 +100,7 @@ export class WRTConfSignalling {
         client.connection?.close();
     }
 
-    private initRTCConnection(client: Client) {
-        this.disconnect(client);
-        client.stream = new MediaStream();
-        client.connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
-        client.connection.ontrack = e => client.stream.addTrack(e.track);
-        this.stream.getTracks().forEach(async track => {
-            const sender = await client.connection.addTrack(track);
-            const params = sender.getParameters();
-            sender.setParameters({
-                ...params,
-                encodings: params.encodings.map(e => ({
-                    ...e,
-                    maxBitrate: track.kind === 'video'
-                        ? videoBitrate
-                        : audioBitrate,
-                })),
-            });
-            console.log(sender);
-        });
+    private initICESignalling(client: Client) {
         const candidate$: Observable<ClientCandidateMessage> =
             fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
                 filter(e => !!e.candidate),
@@ -117,11 +112,25 @@ export class WRTConfSignalling {
             );
         candidate$.subscribe(this.message$);
     }
+
+    private toClient(signallingClient: SignallingClient): Client {
+        const client = {
+            ...signallingClient,
+            connection: new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]}),
+            stream: new MediaStream(),
+        };
+        client.connection.ontrack = ({track}) => client.stream.addTrack(track);
+        this.source.getTracks().forEach(async track => client.connection.addTrack(track, this.source));
+        return client;
+    }
 }
 
-export interface Client {
+interface SignallingClient {
     id: string;
     meta: Serializable;
-    stream?: MediaStream;
-    connection?: RTCPeerConnection;
+}
+
+export interface Client extends SignallingClient {
+    stream: MediaStream;
+    connection: RTCPeerConnection;
 }
