@@ -1,11 +1,15 @@
-import { ClientCandidateMessage, ClientMessage, Serializable, ServerAnswerMessage, ServerCandidateMessage, ServerMessage, ServerOfferMessage } from "@wrtconf/models";
-import { BehaviorSubject, fromEvent, Observable, Subject } from "rxjs";
-import { filter, map } from "rxjs/operators";
+import { ClientMessage, ServerAnswerMessage, ServerCandidateMessage, ServerMessage, ServerOfferMessage, SignallingPeer } from "@wrtconf/models";
+import { Observable, ReplaySubject, Subject } from "rxjs";
+import { Constraints, WebRTCPeer } from "./WebRTCPeer";
 
 export class WebRTCConnection {
-    private peers: Peer[] = [];
+    localStream = new MediaStream();
+    message$ = new Subject<ClientMessage>();
+    peers$ = new ReplaySubject<WebRTCPeer[]>(1);
+
+    private peers: WebRTCPeer[] = [];
     private connectionInitialised = false;
-    private defaultConstraints: Constraints = {
+    private transmissionConstraints: Constraints = {
         audio: {
             maxBitrate: 41000,
         },
@@ -15,85 +19,39 @@ export class WebRTCConnection {
             minSize: 720,
         },
     };
-    source = new MediaStream();
-    message$ = new Subject<ClientMessage>();
-    peers$ = new BehaviorSubject<Peer[]>(this.peers);
 
     constructor(message$: Observable<ServerMessage>, params?: WRTConfSignallingParams) {
         message$.subscribe(m => this.handleMessage(m));
-        this.setSource(params?.source);
-        this.setDefaultConstraints(params?.defaultConstraints);
+        this.updateLocalStream(params?.source);
+        this.updateTransmissionConstraints(params?.defaultConstraints, true);
     }
 
-    setSource(stream?: MediaStream) {
-        this.source = stream;
-        const connections = this.peers
-            .map(c => c.connection)
-            .filter(Boolean);
-        connections.forEach(connection => {
-            connection.getSenders().forEach(s => connection.removeTrack(s));
-            stream?.getTracks().forEach(t => connection.addTrack(t));
-        });
+    updateLocalStream(stream: MediaStream) {
+        if (!stream) {
+            throw new Error(`Cannot update local stream: supplied stream is ${stream}`);
+        }
+        this.localStream = stream;
+        this.peers.forEach(peer => peer.updateLocalStream(stream));
     }
 
-    setDefaultConstraints(constraints: Constraints) {
-        this.defaultConstraints = {
+    updateTransmissionConstraints(constraints: Constraints, apply = false) {
+        this.transmissionConstraints = {
             video: {
-                ...this.defaultConstraints.video,
+                ...this.transmissionConstraints.video,
                 ...constraints?.video || {},
             },
             audio: {
-                ...this.defaultConstraints.audio,
+                ...this.transmissionConstraints.audio,
                 ...constraints?.audio || {},
             },
         };
-    }
-
-    updateConstraints(peerId: string, constraints: Constraints) {
-        const peer = this.peers
-            .find(c => c.id === peerId);
-        if (peer) {
-            peer.constraints = {
-                video: {
-                    ...peer.constraints.video,
-                    ...constraints.video || {},
-                },
-                audio: {
-                    ...peer.constraints.audio,
-                    ...constraints.audio || {},
-                }
-            };
-        }
-        const senders = peer.connection?.getSenders() || [];
-        senders
-            .filter(sender => !!sender.track)
-            .forEach(sender => this.constrainSender(sender, peer.constraints))
-    }
-
-    private constrainSender(sender: RTCRtpSender, constraints: Constraints) {
-        const parameters = sender.getParameters();
-        if (parameters.encodings.length) {
-            Object.assign(parameters.encodings[0], this.calculateConstraints(constraints, sender.track));
-        }
-        sender.setParameters(parameters);
-    }
-
-    private calculateConstraints(constraints: Constraints, track: MediaStreamTrack) {
-        switch(track.kind) {
-            case 'audio':
-                return constraints.audio;
-            case 'video':
-                const result = {
-                    ...constraints.video,
-                    scaleResolutionDownBy: this.scaleDownCoefficient(track, constraints.video.minSize),
-                };
-                delete result.minSize;
-                return result;
+        if (apply) {
+            this.peers.forEach(peer => peer.updateTransmissionConstraints(this.transmissionConstraints));
         }
     }
-
+    
     private async handleMessage(message: ServerMessage) {
-        const peer = this.peers.find(c => c.id == message.from);
+        const peer = this.peers.find(peer => peer.signallingPeer.id == message.from);
         switch(message.type) {
             case 'clients':
                 await this.handlePeers(message.clients);
@@ -113,10 +71,21 @@ export class WebRTCConnection {
 
     private async handlePeers(peers: SignallingPeer[]) {
         const newPeers = peers
-            .filter(peer => !this.peers.some(existing => existing.id === peer.id))
-            .map(peer => this.toPeer(peer));
-        const removedPeers = this.peers.filter(peer =>
-            !peers.some(newPeer => newPeer.id === peer.id)
+            .filter(peer => !this.peers.some(existing => existing.signallingPeer.id === peer.id))
+            .map(signallingPeer => new WebRTCPeer({
+                signallingPeer,
+                transmissionConstraints: this.transmissionConstraints,
+                localStream: this.localStream,
+                onIceCandidate: candidate => {
+                    this.message$.next(({
+                        type: 'candidate',
+                        to: signallingPeer.id,
+                        candidate,
+                    }));
+                }
+            }));
+        const removedPeers = this.peers.filter(({signallingPeer}) =>
+            !peers.some(newPeer => newPeer.id === signallingPeer.id)
         );
         this.peers = this.peers
             .filter(c => !removedPeers.includes(c))
@@ -129,105 +98,37 @@ export class WebRTCConnection {
         }
     }
 
-    private async handleOffer(message: ServerOfferMessage, peer: Peer) {
-        this.initICESignalling(peer);
-        await peer.connection.setRemoteDescription(message.offer);
-        const answer = await peer.connection.createAnswer();
+    private async handleOffer(message: ServerOfferMessage, peer: WebRTCPeer) {
         this.message$.next({
             type: 'answer',
             to: message.from,
-            answer,
+            answer: await peer.getAnswer(message.offer),
         });
-        await peer.connection.setLocalDescription(answer);
     }
 
-    private async handleAnswer(message: ServerAnswerMessage, peer: Peer) {
-        await peer.connection.setRemoteDescription(message.answer);
+    private async handleAnswer(message: ServerAnswerMessage, peer: WebRTCPeer) {
+        await peer.setAnswer(message.answer);
     }
 
-    private async handleCandidate(message: ServerCandidateMessage, peer: Peer) {
+    private async handleCandidate(message: ServerCandidateMessage, peer: WebRTCPeer) {
         await peer.connection?.addIceCandidate(message.candidate);
     }
     
-    private async initNewPeer(peer: Peer) {
-        this.initICESignalling(peer);
-        const offer = await peer.connection.createOffer();
-        await peer.connection.setLocalDescription(offer);
+    private async initNewPeer(peer: WebRTCPeer) {
         this.message$.next({
             type: "offer",
-            to: peer.id,
-            offer,
+            to: peer.signallingPeer.id,
+            offer: await peer.getOffer(),
         });
     }
 
-    private disconnect(peer: Peer) {
+    private disconnect(peer: WebRTCPeer) {
         peer.connection?.close();
     }
 
-    private initICESignalling(peer: Peer) {
-        const candidate$: Observable<ClientCandidateMessage> =
-            fromEvent<RTCPeerConnectionIceEvent>(peer.connection, 'icecandidate').pipe(
-                filter(e => !!e.candidate),
-                map(ev => ({
-                    type: 'candidate',
-                    to: peer.id,
-                    candidate: ev.candidate,
-                })),
-            );
-        candidate$.subscribe(this.message$);
-    }
-
-    private scaleDownCoefficient(track: MediaStreamTrack, minSize?: number): number {
-        const settings = track.getSettings();
-        const currentMinSize = Math.min(settings.width, settings.height);
-        const ratio = currentMinSize / minSize;
-        const coefficient = Math.max(ratio, 1);
-        return isFinite(coefficient) ? coefficient : 1;
-    }
-
-    private toPeer(signallingPeer: SignallingPeer): Peer {
-        const peer = {
-            ...signallingPeer,
-            connection: new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]}),
-            stream: new MediaStream(),
-            constraints: this.defaultConstraints,
-        };
-        peer.connection.ontrack = ({track}) => peer.stream.addTrack(track);
-        this.source.getTracks().forEach(track => {
-            const sender = peer.connection.addTrack(track, this.source);
-            this.constrainSender(sender, this.defaultConstraints);
-        })
-        return peer;
-    }
-}
-
-interface VideoConstraints {
-    maxBitrate?: number;
-    maxFramerate?: number;
-    minSize?: number;
-}
-
-interface AudioConstraints {
-    maxBitrate?: number;
-}
-
-export interface Constraints {
-    video?: VideoConstraints;
-    audio?: AudioConstraints;
 }
 
 export interface WRTConfSignallingParams {
     source?: MediaStream;
     defaultConstraints?: Constraints;
-}
-
-interface SignallingPeer {
-    id: string;
-    meta: Serializable;
-}
-
-export interface Peer extends SignallingPeer {
-    stream: MediaStream;
-    connection: RTCPeerConnection;
-    constraints: Constraints;
 }

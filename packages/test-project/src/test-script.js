@@ -16,11 +16,11 @@ navigator.mediaDevices.getDisplayMedia({audio: true, video: true}).then(stream =
     console.log(conf);
 
     conf.peers$.subscribe(peers => peers.forEach(peer => {
-        if (peer.stream) {
-            const id = 'a' + peer.id;
+        if (peer.remoteStream) {
+            const id = 'a' + peer.signallingPeer.id;
             const video = document.querySelector(`#${id}`) ||
                 createVideo(id);
-            video.srcObject = peer.stream;
+            video.srcObject = peer.remoteStream;
         }
     }));
 });

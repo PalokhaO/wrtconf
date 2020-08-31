@@ -1,17 +1,18 @@
 import { Serializable } from '@wrtconf/models';
 import { Observable } from 'rxjs';
-import { Peer, WebRTCConnection, WRTConfSignallingParams } from './WebRTCConnection';
+import { WebRTCConnection, WRTConfSignallingParams } from './WebRTCConnection';
 import { SocketConnection } from './SocketConnection';
+import { WebRTCPeer } from './WebRTCPeer';
 
 export class WRTConf {
-    private signalling: WebRTCConnection;
-    peers$: Observable<Peer[]>;
+    private webRTCConnection: WebRTCConnection;
+    peers$: Observable<WebRTCPeer[]>;
 
     constructor(private url: string, params: WRTConfParams = {}) {
         const socket = new SocketConnection(url, params.meta);
-        this.signalling = new WebRTCConnection(socket.message$, params);
-        this.signalling.message$.subscribe(m => socket.send(m));
-        this.peers$ = this.signalling.peers$.asObservable();
+        this.webRTCConnection = new WebRTCConnection(socket.message$, params);
+        this.webRTCConnection.message$.subscribe(m => socket.send(m));
+        this.peers$ = this.webRTCConnection.peers$.asObservable();
     }
 }
 
