@@ -2,8 +2,8 @@ import { ClientCandidateMessage, ClientMessage, Serializable, ServerAnswerMessag
 import { BehaviorSubject, fromEvent, Observable, Subject } from "rxjs";
 import { filter, map } from "rxjs/operators";
 
-export class WRTConfSignalling {
-    private clients: Client[] = [];
+export class WebRTCConnection {
+    private peers: Peer[] = [];
     private connectionInitialised = false;
     private defaultConstraints: Constraints = {
         audio: {
@@ -17,7 +17,7 @@ export class WRTConfSignalling {
     };
     source = new MediaStream();
     message$ = new Subject<ClientMessage>();
-    clients$ = new BehaviorSubject<Client[]>(this.clients);
+    peers$ = new BehaviorSubject<Peer[]>(this.peers);
 
     constructor(message$: Observable<ServerMessage>, params?: WRTConfSignallingParams) {
         message$.subscribe(m => this.handleMessage(m));
@@ -27,7 +27,7 @@ export class WRTConfSignalling {
 
     setSource(stream?: MediaStream) {
         this.source = stream;
-        const connections = this.clients
+        const connections = this.peers
             .map(c => c.connection)
             .filter(Boolean);
         connections.forEach(connection => {
@@ -49,25 +49,25 @@ export class WRTConfSignalling {
         };
     }
 
-    updateConstraints(clientId: string, constraints: Constraints) {
-        const client = this.clients
-            .find(c => c.id === clientId);
-        if (client) {
-            client.constraints = {
+    updateConstraints(peerId: string, constraints: Constraints) {
+        const peer = this.peers
+            .find(c => c.id === peerId);
+        if (peer) {
+            peer.constraints = {
                 video: {
-                    ...client.constraints.video,
+                    ...peer.constraints.video,
                     ...constraints.video || {},
                 },
                 audio: {
-                    ...client.constraints.audio,
+                    ...peer.constraints.audio,
                     ...constraints.audio || {},
                 }
             };
         }
-        const senders = client.connection?.getSenders() || [];
+        const senders = peer.connection?.getSenders() || [];
         senders
             .filter(sender => !!sender.track)
-            .forEach(sender => this.constrainSender(sender, client.constraints))
+            .forEach(sender => this.constrainSender(sender, peer.constraints))
     }
 
     private constrainSender(sender: RTCRtpSender, constraints: Constraints) {
@@ -93,84 +93,84 @@ export class WRTConfSignalling {
     }
 
     private async handleMessage(message: ServerMessage) {
-        const client = this.clients.find(c => c.id == message.from);
+        const peer = this.peers.find(c => c.id == message.from);
         switch(message.type) {
             case 'clients':
-                await this.handleClients(message.clients);
+                await this.handlePeers(message.clients);
                 break;
             case 'offer':
-                await this.handleOffer(message, client);
+                await this.handleOffer(message, peer);
                 break;
             case 'answer':
-                await this.handleAnswer(message, client);
+                await this.handleAnswer(message, peer);
                 break;
             case 'candidate':
-                await this.handleCandidate(message, client);
+                await this.handleCandidate(message, peer);
                 break;
         }
-        this.clients$.next(this.clients);
+        this.peers$.next(this.peers);
     }
 
-    private async handleClients(clients: SignallingClient[]) {
-        const newClients = clients
-            .filter(client => !this.clients.some(existing => existing.id === client.id))
-            .map(client => this.toClient(client));
-        const removedClients = this.clients.filter(client =>
-            !clients.some(newClient => newClient.id === client.id)
+    private async handlePeers(peers: SignallingPeer[]) {
+        const newPeers = peers
+            .filter(peer => !this.peers.some(existing => existing.id === peer.id))
+            .map(peer => this.toPeer(peer));
+        const removedPeers = this.peers.filter(peer =>
+            !peers.some(newPeer => newPeer.id === peer.id)
         );
-        this.clients = this.clients
-            .filter(c => !removedClients.includes(c))
-            .concat(newClients);
+        this.peers = this.peers
+            .filter(c => !removedPeers.includes(c))
+            .concat(newPeers);
         if (this.connectionInitialised) {
-            removedClients.forEach(client => this.disconnect(client));
-            newClients.forEach(client => this.initNewClient(client));
+            removedPeers.forEach(peer => this.disconnect(peer));
+            newPeers.forEach(peer => this.initNewPeer(peer));
         } else {
             this.connectionInitialised = true;
         }
     }
 
-    private async handleOffer(message: ServerOfferMessage, client: Client) {
-        this.initICESignalling(client);
-        await client.connection.setRemoteDescription(message.offer);
-        const answer = await client.connection.createAnswer();
+    private async handleOffer(message: ServerOfferMessage, peer: Peer) {
+        this.initICESignalling(peer);
+        await peer.connection.setRemoteDescription(message.offer);
+        const answer = await peer.connection.createAnswer();
         this.message$.next({
             type: 'answer',
             to: message.from,
             answer,
         });
-        await client.connection.setLocalDescription(answer);
+        await peer.connection.setLocalDescription(answer);
     }
 
-    private async handleAnswer(message: ServerAnswerMessage, client: Client) {
-        await client.connection.setRemoteDescription(message.answer);
+    private async handleAnswer(message: ServerAnswerMessage, peer: Peer) {
+        await peer.connection.setRemoteDescription(message.answer);
     }
 
-    private async handleCandidate(message: ServerCandidateMessage, client: Client) {
-        await client.connection?.addIceCandidate(message.candidate);
+    private async handleCandidate(message: ServerCandidateMessage, peer: Peer) {
+        await peer.connection?.addIceCandidate(message.candidate);
     }
     
-    private async initNewClient(client: Client) {
-        this.initICESignalling(client);
-        const offer = await client.connection.createOffer();
-        await client.connection.setLocalDescription(offer);
+    private async initNewPeer(peer: Peer) {
+        this.initICESignalling(peer);
+        const offer = await peer.connection.createOffer();
+        await peer.connection.setLocalDescription(offer);
         this.message$.next({
             type: "offer",
-            to: client.id,
+            to: peer.id,
             offer,
         });
     }
 
-    private disconnect(client: Client) {
-        client.connection?.close();
+    private disconnect(peer: Peer) {
+        peer.connection?.close();
     }
 
-    private initICESignalling(client: Client) {
+    private initICESignalling(peer: Peer) {
         const candidate$: Observable<ClientCandidateMessage> =
-            fromEvent<RTCPeerConnectionIceEvent>(client.connection, 'icecandidate').pipe(
+            fromEvent<RTCPeerConnectionIceEvent>(peer.connection, 'icecandidate').pipe(
                 filter(e => !!e.candidate),
                 map(ev => ({
                     type: 'candidate',
-                    to: client.id,
+                    to: peer.id,
                     candidate: ev.candidate,
                 })),
             );
@@ -185,19 +185,19 @@ export class WRTConfSignalling {
         return isFinite(coefficient) ? coefficient : 1;
     }
 
-    private toClient(signallingClient: SignallingClient): Client {
-        const client = {
-            ...signallingClient,
+    private toPeer(signallingPeer: SignallingPeer): Peer {
+        const peer = {
+            ...signallingPeer,
             connection: new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]}),
             stream: new MediaStream(),
             constraints: this.defaultConstraints,
         };
-        client.connection.ontrack = ({track}) => client.stream.addTrack(track);
+        peer.connection.ontrack = ({track}) => peer.stream.addTrack(track);
         this.source.getTracks().forEach(track => {
-            const sender = client.connection.addTrack(track, this.source);
+            const sender = peer.connection.addTrack(track, this.source);
             this.constrainSender(sender, this.defaultConstraints);
         })
-        return client;
+        return peer;
     }
 }
 
@@ -221,12 +221,12 @@ export interface WRTConfSignallingParams {
     defaultConstraints?: Constraints;
 }
 
-interface SignallingClient {
+interface SignallingPeer {
     id: string;
     meta: Serializable;
 }
 
-export interface Client extends SignallingClient {
+export interface Peer extends SignallingPeer {
     stream: MediaStream;
     connection: RTCPeerConnection;
     constraints: Constraints;

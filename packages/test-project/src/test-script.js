@@ -15,12 +15,12 @@ navigator.mediaDevices.getDisplayMedia({audio: true, video: true}).then(stream =
     });
     console.log(conf);
 
-    conf.clients$.subscribe(clients => clients.forEach(client => {
-        if (client.stream) {
-            const id = 'a' + client.id;
+    conf.peers$.subscribe(peers => peers.forEach(peer => {
+        if (peer.stream) {
+            const id = 'a' + peer.id;
             const video = document.querySelector(`#${id}`) ||
                 createVideo(id);
-            video.srcObject = client.stream;
+            video.srcObject = peer.stream;
         }
     }));
 });

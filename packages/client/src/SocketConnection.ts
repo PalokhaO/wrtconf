@@ -2,7 +2,7 @@ import { Subject, fromEvent, throwError, merge } from 'rxjs';
 import { map, takeUntil, filter, debounceTime, switchMap, first, share, shareReplay } from 'rxjs/operators';
 import { ClientMessage, Serializable } from '@wrtconf/models';
 
-export class WRTConfSocket {
+export class SocketConnection {
     private socket: WebSocket;
     message$ = new Subject<any>();
 
