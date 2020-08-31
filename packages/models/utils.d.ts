@@ -6,3 +6,14 @@ export interface SignallingPeer {
     id: string;
     meta: Serializable;
 }
+
+export interface StreamConstraints {
+    video?: {
+        maxBitrate?: number;
+        maxFramerate?: number;
+        minSize?: number;
+    };
+    audio?: {
+        maxBitrate?: number;
+    };
+}

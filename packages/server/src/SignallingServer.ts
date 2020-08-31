@@ -41,6 +41,15 @@ export class SignallingServer {
                         candidate: message.candidate,
                     });
                 break;
+            case 'constraints':
+                connections
+                    .find(c => c.id === message.to)
+                    ?.send({
+                        type: 'constraints',
+                        from: connection.id,
+                        constraints: message.constraints,
+                    });
+                break;
         }
     }
 

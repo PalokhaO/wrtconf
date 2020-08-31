@@ -1,24 +1,29 @@
-import { SignallingPeer } from "@wrtconf/models";
+import { SignallingPeer, StreamConstraints } from "@wrtconf/models";
 
 export class WebRTCPeer {
     signallingPeer: SignallingPeer;
-    transmissionConstraints: Constraints;
+    receptionConstraints: StreamConstraints;
+    transmissionConstraints: StreamConstraints;
+    onReceptionConstraints: (constraints: StreamConstraints) => void;
+    onIceCandidate: (candidate: RTCIceCandidate) => void;
 
     localStream = new MediaStream();
     remoteStream = new MediaStream();
-    connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+    private connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
     
 
     constructor(init: WebRTCPeerInit) {
         this.signallingPeer = init.signallingPeer;
-        this.transmissionConstraints = init.transmissionConstraints;
-        this.connection.addEventListener('icecandidate', e => {
-            if (e.candidate) {
-                init.onIceCandidate(e.candidate);
-            }
-        });
+        this.receptionConstraints = init.receptionConstraints;
+        this.onReceptionConstraints = init.onReceptionConstraints;
+        this.onIceCandidate = init.onIceCandidate;
 
         this.connection.ontrack = ({track}) => this.remoteStream.addTrack(track);
+        this.connection.addEventListener('icecandidate', e => {
+            if (e.candidate) {
+                this.onIceCandidate?.(e.candidate);
+            }
+        });
         if (init.localStream) {
             this.updateLocalStream(init.localStream);
         }
@@ -37,19 +42,41 @@ export class WebRTCPeer {
         stream.addEventListener('removetrack', this.removeTrackHandler);
     }
 
-    updateTransmissionConstraints(constraints: Constraints) {
-        this.transmissionConstraints = {
+    updateReceptionConstraints(constraints: StreamConstraints) {
+        this.receptionConstraints = {
             video: {
-                ...this.transmissionConstraints.video,
+                ...this.receptionConstraints.video,
                 ...constraints.video,
             },
             audio: {
-                ...this.transmissionConstraints.audio,
+                ...this.receptionConstraints.audio,
+                ...constraints.audio,
+            }
+        };
+        this.onReceptionConstraints?.(this.receptionConstraints);
+    }
+
+    updateTransmissionConstraints(constraints: StreamConstraints) {
+        this.transmissionConstraints = {
+            video: {
+                ...this.transmissionConstraints?.video || {},
+                ...constraints.video,
+            },
+            audio: {
+                ...this.transmissionConstraints?.audio || {},
                 ...constraints.audio,
             }
         };
         this.connection.getSenders()
             .forEach(sender => this.constrainSender(sender));
+    }
+
+    addIceCandidate(candidate: RTCIceCandidate) {
+        this.connection.addIceCandidate(candidate);
+    }
+
+    disconnect() {
+        this.connection.close();
     }
 
     async getOffer() {
@@ -82,7 +109,7 @@ export class WebRTCPeer {
         sender.setParameters(parameters);
     }
     
-    private calculateConstraints(constraints: Constraints, track: MediaStreamTrack) {
+    private calculateConstraints(constraints: StreamConstraints, track: MediaStreamTrack) {
         switch(track.kind) {
             case 'audio':
                 return constraints.audio;
@@ -118,18 +145,8 @@ export class WebRTCPeer {
 
 interface WebRTCPeerInit {
     signallingPeer: SignallingPeer;
-    transmissionConstraints: Constraints;
-    onIceCandidate: (candidate: RTCIceCandidate) => void;
+    receptionConstraints: StreamConstraints;
+    onIceCandidate?: (candidate: RTCIceCandidate) => void;
+    onReceptionConstraints?: (constraints: StreamConstraints) => void;
     localStream?: MediaStream;
-}
-
-export interface Constraints {
-    video?: {
-        maxBitrate?: number;
-        maxFramerate?: number;
-        minSize?: number;
-    };
-    audio?: {
-        maxBitrate?: number;
-    };
 }
