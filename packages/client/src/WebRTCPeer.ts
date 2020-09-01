@@ -87,12 +87,14 @@ export class WebRTCPeer {
 
     async getAnswer(offer: RTCSessionDescriptionInit) {
         await this.connection.setRemoteDescription(offer);
+        this.updateReceptionConstraints(this.receptionConstraints);
         const answer = await this.connection.createAnswer();
         await this.connection.setLocalDescription(answer);
         return answer;
     }
 
     async setAnswer(answer: RTCSessionDescriptionInit) {
+        this.updateReceptionConstraints(this.receptionConstraints);
         await this.connection.setRemoteDescription(answer);
     }
 
