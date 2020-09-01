@@ -116,11 +116,13 @@ export class WebRTCPeer {
             case 'audio':
                 return constraints.audio;
             case 'video':
-                const result = {
+                const result: any = {
                     ...constraints.video,
                     scaleResolutionDownBy: this.scaleDownCoefficient(track, constraints.video.minSize),
                 };
+                result.maxBitrate = (constraints.video.minSize ** 2) * 20 / constraints.video.maxFramerate * constraints.video.quality;
                 delete result.minSize;
+                delete result.quality;
                 return result;
         }
     }

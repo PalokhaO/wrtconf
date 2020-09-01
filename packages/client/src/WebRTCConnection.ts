@@ -14,7 +14,7 @@ export class WebRTCConnection {
             maxBitrate: 41000,
         },
         video: {
-            maxBitrate: 750000,
+            quality: 1,
             maxFramerate: 20,
             minSize: 720,
         },

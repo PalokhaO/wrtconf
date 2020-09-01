@@ -9,9 +9,10 @@ export interface SignallingPeer {
 
 export interface StreamConstraints {
     video?: {
-        maxBitrate?: number;
+        // maxBitrate?: number;
         maxFramerate?: number;
         minSize?: number;
+        quality?: number;
     };
     audio?: {
         maxBitrate?: number;
