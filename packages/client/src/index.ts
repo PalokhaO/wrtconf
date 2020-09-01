@@ -1,4 +1,4 @@
-import { Serializable } from '@wrtconf/models';
+import { Serializable, StreamConstraints } from '@wrtconf/models';
 import { Observable } from 'rxjs';
 import { WebRTCConnection, WRTConfSignallingParams } from './WebRTCConnection';
 import { SocketConnection } from './SocketConnection';
@@ -13,6 +13,14 @@ export class WRTConf {
         this.webRTCConnection = new WebRTCConnection(socket.message$, params);
         this.webRTCConnection.message$.subscribe(m => socket.send(m));
         this.peers$ = this.webRTCConnection.peers$.asObservable();
+    }
+
+    updateLocalStream(stream: MediaStream) {
+        this.webRTCConnection.updateLocalStream(stream);
+    }
+
+    updateReceptionConstraints(constraints: StreamConstraints) {
+        this.webRTCConnection.updateReceptionConstraints(constraints, true);
     }
 }
 

@@ -9,7 +9,7 @@ export class WebRTCConnection {
 
     private peers: WebRTCPeer[] = [];
     private connectionInitialised = false;
-    private transmissionConstraints: StreamConstraints = {
+    private receptionConstraints: StreamConstraints = {
         audio: {
             maxBitrate: 41000,
         },
@@ -23,7 +23,7 @@ export class WebRTCConnection {
     constructor(message$: Observable<ServerMessage>, params?: WRTConfSignallingParams) {
         message$.subscribe(m => this.handleMessage(m));
         this.updateLocalStream(params?.source);
-        this.updateTransmissionConstraints(params?.defaultConstraints, true);
+        this.updateReceptionConstraints(params?.defaultConstraints, true);
     }
 
     updateLocalStream(stream: MediaStream) {
@@ -34,19 +34,19 @@ export class WebRTCConnection {
         this.peers.forEach(peer => peer.updateLocalStream(stream));
     }
 
-    updateTransmissionConstraints(constraints: StreamConstraints, apply = false) {
-        this.transmissionConstraints = {
+    updateReceptionConstraints(constraints: StreamConstraints, apply = false) {
+        this.receptionConstraints = {
             video: {
-                ...this.transmissionConstraints.video,
+                ...this.receptionConstraints.video,
                 ...constraints?.video || {},
             },
             audio: {
-                ...this.transmissionConstraints.audio,
+                ...this.receptionConstraints.audio,
                 ...constraints?.audio || {},
             },
         };
         if (apply) {
-            this.peers.forEach(peer => peer.updateTransmissionConstraints(this.transmissionConstraints));
+            this.peers.forEach(peer => peer.updateReceptionConstraints(this.receptionConstraints));
         }
     }
     
@@ -68,7 +68,6 @@ export class WebRTCConnection {
             case 'constraints':
                 await this.handleConstraints(message, peer);
         }
-        this.peers$.next(this.peers);
     }
 
     private async handlePeers(peers: SignallingPeer[]) {
@@ -76,7 +75,7 @@ export class WebRTCConnection {
             .filter(peer => !this.peers.some(existing => existing.signallingPeer.id === peer.id))
             .map(signallingPeer => new WebRTCPeer({
                 signallingPeer,
-                receptionConstraints: this.transmissionConstraints,
+                receptionConstraints: this.receptionConstraints,
                 localStream: this.localStream,
                 onIceCandidate: candidate => {
                     this.message$.next(({
@@ -105,6 +104,7 @@ export class WebRTCConnection {
         } else {
             this.connectionInitialised = true;
         }
+        this.peers$.next(this.peers);
     }
 
     private async handleOffer(message: ServerOfferMessage, peer: WebRTCPeer) {
@@ -113,10 +113,12 @@ export class WebRTCConnection {
             to: message.from,
             answer: await peer.getAnswer(message.offer),
         });
+        this.peers$.next(this.peers);
     }
 
     private async handleAnswer(message: ServerAnswerMessage, peer: WebRTCPeer) {
         await peer.setAnswer(message.answer);
+        this.peers$.next(this.peers);
     }
 
     private async handleCandidate(message: ServerCandidateMessage, peer: WebRTCPeer) {
