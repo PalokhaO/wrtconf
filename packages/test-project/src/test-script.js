@@ -12,6 +12,11 @@ navigator.mediaDevices.getDisplayMedia({audio: true, video: true}).then(stream =
     const url = `${(location.protocol === 'https:' ? 'wss:' : 'ws:')}//${location.host}/wrtconf`;
     const conf = new WRTConf(url, {
         source: stream,
+        defaultConstraints: {
+            video: {
+                quality: 1,
+            }
+        }
     });
     console.log(conf);
 
