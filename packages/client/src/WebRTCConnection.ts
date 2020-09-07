@@ -1,13 +1,13 @@
 import { ClientMessage, ServerAnswerMessage, ServerCandidateMessage, ServerConstraintsMessage, ServerMessage, ServerOfferMessage, SignallingPeer, StreamConstraints } from "@wrtconf/models";
-import { Observable, ReplaySubject, Subject } from "rxjs";
+import { Subject } from "rxjs";
+import { EventEmitter } from "./EventEmitter";
 import { WebRTCPeer } from "./WebRTCPeer";
 
-export class WebRTCConnection {
+export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
     localStream = new MediaStream();
     message$ = new Subject<ClientMessage>();
-    peers$ = new ReplaySubject<WebRTCPeer[]>(1);
 
-    private peers: WebRTCPeer[] = [];
+    peers: WebRTCPeer[] = [];
     private connectionInitialised = false;
     private receptionConstraints: StreamConstraints = {
         audio: {
@@ -20,8 +20,8 @@ export class WebRTCConnection {
         },
     };
 
-    constructor(message$: Observable<ServerMessage>, params?: WRTConfSignallingParams) {
-        message$.subscribe(m => this.handleMessage(m));
+    constructor(params?: WRTConfSignallingParams) {
+        super();
         this.updateLocalStream(params?.source);
         this.updateReceptionConstraints(params?.defaultConstraints, true);
     }
@@ -49,8 +49,12 @@ export class WebRTCConnection {
             this.peers.forEach(peer => peer.updateReceptionConstraints(this.receptionConstraints));
         }
     }
+
+    resetConnectionStatus() {
+        this.connectionInitialised = false;
+    }
     
-    private async handleMessage(message: ServerMessage) {
+    async handleMessage(message: ServerMessage) {
         const peer = this.peers.find(peer => peer.signallingPeer.id == message.from);
         switch(message.type) {
             case 'clients':
@@ -98,13 +102,20 @@ export class WebRTCConnection {
         this.peers = this.peers
             .filter(c => !removedPeers.includes(c))
             .concat(newPeers);
+        newPeers.forEach(peer => this.emit({
+            type: 'peer',
+            data: peer,
+        }));
+        removedPeers.forEach(peer => this.emit({
+            type: 'removepeer',
+            data: peer,
+        }));
         if (this.connectionInitialised) {
             removedPeers.forEach(peer => peer.disconnect());
             newPeers.forEach(peer => this.initNewPeer(peer));
         } else {
             this.connectionInitialised = true;
         }
-        this.peers$.next(this.peers);
     }
 
     private async handleOffer(message: ServerOfferMessage, peer: WebRTCPeer) {
@@ -113,12 +124,10 @@ export class WebRTCConnection {
             to: message.from,
             answer: await peer.getAnswer(message.offer),
         });
-        this.peers$.next(this.peers);
     }
 
     private async handleAnswer(message: ServerAnswerMessage, peer: WebRTCPeer) {
         await peer.setAnswer(message.answer);
-        this.peers$.next(this.peers);
     }
 
     private async handleCandidate(message: ServerCandidateMessage, peer: WebRTCPeer) {
@@ -142,4 +151,9 @@ export class WebRTCConnection {
 export interface WRTConfSignallingParams {
     source?: MediaStream;
     defaultConstraints?: StreamConstraints;
+}
+
+export interface WRTConfEvents {
+    'peer': WebRTCPeer;
+    'removepeer': WebRTCPeer;
 }

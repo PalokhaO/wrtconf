@@ -1,20 +1,25 @@
 import { Serializable, StreamConstraints } from '@wrtconf/models';
-import { Observable } from 'rxjs';
-import { WebRTCConnection, WRTConfSignallingParams } from './WebRTCConnection';
+import { EventEmitter } from './EventEmitter';
 import { SocketConnection } from './SocketConnection';
+import { WebRTCConnection, WRTConfEvents, WRTConfSignallingParams } from './WebRTCConnection';
 import { WebRTCPeer } from './WebRTCPeer';
 
-export class WRTConf {
+export class WRTConf extends EventEmitter<WRTConfEvents>{
     private webRTCConnection: WebRTCConnection;
     private socketConnection: SocketConnection;
-    peers$: Observable<WebRTCPeer[]>;
+    public get peers(): WebRTCPeer[] {
+        return this.webRTCConnection.peers;
+    }
 
     constructor(private url: string, params: WRTConfParams = {}) {
+        super();
         this.socketConnection = new SocketConnection(url, params.meta);
-        this.webRTCConnection = new WebRTCConnection(this.socketConnection.message$, params);
+        this.webRTCConnection = new WebRTCConnection(params);
+        this.webRTCConnection.addEventListener('peer', e => this.emit(e));
+        this.webRTCConnection.addEventListener('removepeer', e => this.emit(e));
         this.webRTCConnection.message$.subscribe(m => this.socketConnection.send(m));
-        this.peers$ = this.webRTCConnection.peers$.asObservable();
-        this.socketConnection.connect$.subscribe();
+        this.socketConnection.message$.subscribe(m => this.webRTCConnection.handleMessage(m));
+        this.socketConnection.connect$.subscribe(() => this.webRTCConnection.resetConnectionStatus());
     }
 
     updateLocalStream(stream: MediaStream) {

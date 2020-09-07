@@ -20,18 +20,22 @@ navigator.mediaDevices.getDisplayMedia({audio: true, video: true}).then(stream =
     });
     console.log(conf);
 
-    conf.peers$.subscribe(peers => {
-        peers.forEach(peer => {
-            if (peer.remoteStream) {
-                const id = 'a' + peer.signallingPeer.id;
-                const video = document.querySelector(`#${id}`) ||
-                    createVideo(id);
-                video.srcObject = peer.remoteStream;
-            }
-        });
-        const minSizeConstraint = 720 / peers.length;
+    conf.addEventListener('peer', ({data: peer}) => {
+        const id = 'a' + peer.signallingPeer.id;
+        const video = createVideo(id);
+        video.srcObject = peer.remoteStream;
+        updateSize();
+    });
+    conf.addEventListener('removepeer', ({data: peer}) => {
+        document.querySelector('#a' + peer.signallingPeer.id)
+            ?.remove();
+        updateSize();
+    });
+
+    function updateSize() {
+        const minSizeConstraint = 720 / conf.peers.length;
         if (minSizeConstraint < 720) {
             conf.updateReceptionConstraints({video: {minSize: minSizeConstraint}}, true);
         }
-    });
+    }
 });
