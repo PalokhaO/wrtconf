@@ -1,13 +1,14 @@
-import { Subject, fromEvent, throwError, merge } from 'rxjs';
-import { map, takeUntil, filter, debounceTime, switchMap, first, share, shareReplay } from 'rxjs/operators';
-import { ClientMessage, Serializable } from '@wrtconf/models';
+import { ClientMessage, Serializable, ServerMessage } from '@wrtconf/models';
+import { fromEvent, merge, Subject, throwError } from 'rxjs';
+import { debounceTime, delay, filter, first, map, share, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 
 export class SocketConnection {
     private socket: WebSocket;
-    message$ = new Subject<any>();
+    message$ = new Subject<ServerMessage>();
+    connect$ = new Subject<void>();
 
-    constructor(private url: string, meta: Serializable = null) {
-        this.initSocket(meta);
+    constructor(private url: string, private meta: Serializable = null) {
+        this.initSocket();
     }
     
     send(message: ClientMessage) {
@@ -15,25 +16,26 @@ export class SocketConnection {
     }
 
     updateMeta(meta: Serializable) {
+        this.meta = meta;
         this.send({
             type: 'meta',
-            meta,
+            meta: this.meta,
         });
     }
 
-    private async initSocket(meta: Serializable) {
-        this.socket?.close();
+    private async initSocket() {
+        this.socket?.close(1000);
         const socket = new WebSocket(this.url);
-        await this.open(socket);
         this.socket = socket;
         this.keepAlive(socket);
         this.initListeners(socket);
-        this.updateMeta(meta);
-        
+        await this.open(socket);
+        this.connect$.next();
+        this.updateMeta(this.meta);
     }
 
     private initListeners(socket: WebSocket) {
-        const closed$ = fromEvent(socket, 'close').pipe(
+        const closed$ = fromEvent<CloseEvent>(socket, 'close').pipe(
             first(),
             share(),
         );
@@ -49,7 +51,15 @@ export class SocketConnection {
             source => merge(source, error$),
             takeUntil(closed$),
         );
-        message$.subscribe(this.message$);
+        message$.subscribe(
+            data => this.message$.next(data),
+        );
+        closed$.pipe(
+            filter(event => event.code !== 100),
+            tap(() => console.log("Socket connection lost")),
+            delay(1000),
+            tap(() => console.log("Retrying socket connection")),
+        ).subscribe(() => this.initSocket());
     }
 
     private keepAlive(socket) {
