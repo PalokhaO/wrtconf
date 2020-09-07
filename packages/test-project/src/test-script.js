@@ -8,7 +8,7 @@ function createVideo(id) {
     return video;
 }
 
-navigator.mediaDevices.getDisplayMedia({audio: true, video: true}).then(stream => {
+navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(stream => {
     const url = `${(location.protocol === 'https:' ? 'wss:' : 'ws:')}//${location.host}/wrtconf`;
     const conf = new WRTConf(url, {
         source: stream,
