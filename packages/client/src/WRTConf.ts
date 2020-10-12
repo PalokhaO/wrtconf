@@ -1,13 +1,14 @@
 import { ClientMessage, ServerAnswerMessage, ServerCandidateMessage, ServerConstraintsMessage, ServerMessage, ServerOfferMessage, SignallingPeer, StreamConstraints } from "@wrtconf/models";
 import { Subject } from "rxjs";
 import { EventEmitter } from "./EventEmitter";
+import { SocketConnection } from "./SocketConnection";
 import { WebRTCPeer } from "./WebRTCPeer";
 
-export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
+export class WRTConf extends EventEmitter<WRTConfEvents> {
     localStream = new MediaStream();
     message$ = new Subject<ClientMessage>();
-
     peers: WebRTCPeer[] = [];
+
     private connectionInitialised = false;
     private receptionConstraints: StreamConstraints = {
         audio: {
@@ -19,9 +20,14 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
             minSize: 720,
         },
     };
+    private socketConnection: SocketConnection;
 
     constructor(params?: WRTConfSignallingParams) {
         super();
+        this.socketConnection = new SocketConnection(params.url, params.meta);
+        this.socketConnection.message$.subscribe(m => this.handleMessage(m));
+        this.socketConnection.connect$.subscribe(() => this.resetConnectionStatus());
+
         this.updateLocalStream(params?.source);
         this.updateReceptionConstraints(params?.defaultConstraints, true);
     }
@@ -50,11 +56,15 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
         }
     }
 
-    resetConnectionStatus() {
+    updateMeta(meta: string) {
+        this.socketConnection.updateMeta(meta);
+    }
+
+    private resetConnectionStatus() {
         this.connectionInitialised = false;
     }
     
-    async handleMessage(message: ServerMessage) {
+    private async handleMessage(message: ServerMessage) {
         const peer = this.peers.find(peer => peer.signallingPeer.id == message.from);
         switch(message.type) {
             case 'clients':
@@ -78,18 +88,19 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
         const newPeers = peers
             .filter(peer => !this.peers.some(existing => existing.signallingPeer.id === peer.id))
             .map(signallingPeer => new WebRTCPeer({
+                meta: signallingPeer.meta,
                 signallingPeer,
                 receptionConstraints: this.receptionConstraints,
                 localStream: this.localStream,
                 onIceCandidate: candidate => {
-                    this.message$.next(({
+                    this.socketConnection.send(({
                         type: 'candidate',
                         to: signallingPeer.id,
                         candidate,
                     }));
                 },
                 onReceptionConstraints: constraints => {
-                    this.message$.next({
+                    this.socketConnection.send({
                         type: 'constraints',
                         to: signallingPeer.id,
                         constraints,
@@ -99,9 +110,11 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
         const removedPeers = this.peers.filter(({signallingPeer}) =>
             !peers.some(newPeer => newPeer.id === signallingPeer.id)
         );
-        this.peers = this.peers
-            .filter(c => !removedPeers.includes(c))
-            .concat(newPeers);
+        const existingPeers = this.peers
+            .filter(p => !removedPeers.includes(p));
+
+        this.peers = newPeers.concat(newPeers);
+
         newPeers.forEach(peer => this.emit({
             type: 'peer',
             data: peer,
@@ -110,6 +123,7 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
             type: 'removepeer',
             data: peer,
         }));
+
         if (this.connectionInitialised) {
             removedPeers.forEach(peer => peer.disconnect());
             newPeers.forEach(peer => this.initNewPeer(peer));
@@ -119,7 +133,7 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
     }
 
     private async handleOffer(message: ServerOfferMessage, peer: WebRTCPeer) {
-        this.message$.next({
+        this.socketConnection.send({
             type: 'answer',
             to: message.from,
             answer: await peer.getAnswer(message.offer),
@@ -139,7 +153,7 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
     }
     
     private async initNewPeer(peer: WebRTCPeer) {
-        this.message$.next({
+        this.socketConnection.send({
             type: "offer",
             to: peer.signallingPeer.id,
             offer: await peer.getOffer(),
@@ -149,11 +163,14 @@ export class WebRTCConnection extends EventEmitter<WRTConfEvents> {
 }
 
 export interface WRTConfSignallingParams {
+    url: string;
     source?: MediaStream;
     defaultConstraints?: StreamConstraints;
+    meta?: string;
 }
 
 export interface WRTConfEvents {
     'peer': WebRTCPeer;
+    'metaupdate': WebRTCPeer;
     'removepeer': WebRTCPeer;
 }

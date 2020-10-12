@@ -1,4 +1,4 @@
-const { WRTConf } = require('@wrtconf/client');
+const { WebRTCConnection } = require('@wrtconf/client');
 
 function createVideo(id) {
     const video = document.createElement('video');
@@ -10,7 +10,8 @@ function createVideo(id) {
 
 navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(stream => {
     const url = `${(location.protocol === 'https:' ? 'wss:' : 'ws:')}//${location.host}/wrtconf`;
-    const conf = new WRTConf(url, {
+    const conf = new WebRTCConnection({
+        url,
         source: stream,
         defaultConstraints: {
             video: {
