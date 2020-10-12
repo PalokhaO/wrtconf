@@ -1,6 +1,7 @@
 import { SignallingPeer, StreamConstraints } from "@wrtconf/models";
 
 export class WebRTCPeer {
+
     signallingPeer: SignallingPeer;
     receptionConstraints: StreamConstraints;
     transmissionConstraints: StreamConstraints;
@@ -9,6 +10,7 @@ export class WebRTCPeer {
 
     localStream = new MediaStream();
     remoteStream = new MediaStream();
+    meta?: string;
     private connection = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
     
 
@@ -27,6 +29,7 @@ export class WebRTCPeer {
         if (init.localStream) {
             this.updateLocalStream(init.localStream);
         }
+        this.meta = init.meta;
     }
 
     updateLocalStream(stream: MediaStream) {
@@ -154,4 +157,5 @@ interface WebRTCPeerInit {
     onIceCandidate?: (candidate: RTCIceCandidate) => void;
     onReceptionConstraints?: (constraints: StreamConstraints) => void;
     localStream?: MediaStream;
+    meta?: string;
 }

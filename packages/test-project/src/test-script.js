@@ -1,4 +1,4 @@
-const { WebRTCConnection } = require('@wrtconf/client');
+const { WRTConf } = require('@wrtconf/client');
 
 function createVideo(id) {
     const video = document.createElement('video');
@@ -10,7 +10,7 @@ function createVideo(id) {
 
 navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(stream => {
     const url = `${(location.protocol === 'https:' ? 'wss:' : 'ws:')}//${location.host}/wrtconf`;
-    const conf = new WebRTCConnection({
+    const conf = new WRTConf({
         url,
         source: stream,
         defaultConstraints: {
@@ -31,6 +31,9 @@ navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(stream => {
         document.querySelector('#a' + peer.signallingPeer.id)
             ?.remove();
         updateSize();
+    });
+    conf.addEventListener('metaupdate', ({data: peer}) => {
+        console.log("Meta updated for peer: ", peer);
     });
 
     function updateSize() {

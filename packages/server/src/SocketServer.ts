@@ -3,7 +3,7 @@ import { Server as WebsocketServer } from 'ws';
 import WebSocket from 'ws';
 import { BehaviorSubject, fromEvent, merge, Observable, throwError } from 'rxjs';
 import { debounceTime, filter, first, map, share, shareReplay, startWith, switchMap, takeUntil } from 'rxjs/operators';
-import { ClientMessage, ClientMetaMessage, Serializable, ServerMessage } from '../../models';
+import { ClientMessage, ClientMetaMessage, ServerMessage } from '../../models';
 import { v4 } from 'uuid';
 
 export class SocketServer {
@@ -67,7 +67,7 @@ export class SocketServer {
         closed$.subscribe(() => this.disconnect(connection));
     }
 
-    private setMeta(connection: SocketConnection, meta: Serializable) {
+    private setMeta(connection: SocketConnection, meta: string) {
         connection.meta = meta;
         if (!this.connections.includes(connection)) {
             this.connections = [
@@ -112,7 +112,7 @@ export class SocketServer {
 
 export interface SocketConnection {
     id: string;
-    meta: Serializable;
+    meta: string;
     message$: Observable<ClientMessage>;
     send: (message: ServerMessage) => void;
 }

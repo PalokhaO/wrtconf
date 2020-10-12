@@ -1,11 +1,11 @@
-import { Serializable, StreamConstraints } from "./utils";
+import { StreamConstraints } from "./utils";
 
 export type ClientMessage = ClientMetaMessage | ClientOfferMessage |
     ClientAnswerMessage | ClientCandidateMessage | ClientConstraintsMessage;
 
 export interface ClientMetaMessage {
     type: 'meta';
-    meta: Serializable;
+    meta: string;
 }
 
 export interface ClientOfferMessage {
@@ -37,7 +37,7 @@ export type ServerMessage = ServerClientsMessage | ServerOfferMessage
 
 export interface ServerClientsMessage {
     type: 'clients';
-    clients: {id: string, meta: Serializable}[];
+    clients: {id: string, meta: string}[];
     from?: undefined;
 }
 

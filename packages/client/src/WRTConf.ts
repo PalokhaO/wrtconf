@@ -112,8 +112,17 @@ export class WRTConf extends EventEmitter<WRTConfEvents> {
         );
         const existingPeers = this.peers
             .filter(p => !removedPeers.includes(p));
+        const updatedMetaPeers = existingPeers
+            .filter(({signallingPeer}) => {
+                const updated = peers.find(p => p.id === signallingPeer.id);
+                const metaUpdated = updated.meta !== signallingPeer.meta;
+                if (metaUpdated) {
+                    signallingPeer.meta = updated.meta;
+                }
+                return metaUpdated
+            });
 
-        this.peers = newPeers.concat(newPeers);
+        this.peers = existingPeers.concat(newPeers);
 
         newPeers.forEach(peer => this.emit({
             type: 'peer',
@@ -121,6 +130,10 @@ export class WRTConf extends EventEmitter<WRTConfEvents> {
         }));
         removedPeers.forEach(peer => this.emit({
             type: 'removepeer',
+            data: peer,
+        }));
+        updatedMetaPeers.forEach(peer => this.emit({
+            type: 'metaupdate',
             data: peer,
         }));
 

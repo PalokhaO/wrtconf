@@ -1,4 +1,4 @@
-import { ClientMessage, Serializable, ServerMessage } from '@wrtconf/models';
+import { ClientMessage, ServerMessage } from '@wrtconf/models';
 import { fromEvent, merge, Subject, throwError } from 'rxjs';
 import { debounceTime, delay, filter, first, map, share, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 
@@ -7,7 +7,7 @@ export class SocketConnection {
     message$ = new Subject<ServerMessage>();
     connect$ = new Subject<void>();
 
-    constructor(private url: string, private meta: Serializable = null) {
+    constructor(private url: string, private meta?: string) {
         this.initSocket();
     }
     
@@ -15,7 +15,7 @@ export class SocketConnection {
         this.socket.send(JSON.stringify(message));
     }
 
-    updateMeta(meta: Serializable) {
+    updateMeta(meta: string) {
         this.meta = meta;
         this.send({
             type: 'meta',
