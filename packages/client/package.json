@@ -1,5 +1,5 @@
 {
-  "name": "@wrtconf/client",
+  "name": "@PalokhaO/wrtconf-client",
   "version": "1.0.0",
   "description": "WRTConf server",
   "main": "output/index.js",
@@ -11,6 +11,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PalokhaO/wrtconf.git"
+  },
+  "publishConfig": {
+    "registry":"https://npm.pkg.github.com"
   },
   "author": "Palokha Oleksandr",
   "license": "MIT",
