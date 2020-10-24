@@ -16,7 +16,7 @@
     "bump-workspace": "yarn version patch -d",
     "bump": "yarn bump-workspace && yarn wsrun bump && yarn version apply --all",
     "release": "yarn bump && yarn build && yarn wsrun release",
-    "wsrun": "wsrun -m -t --rewrite-paths"
+    "wsrun": "wsrun -m -t -e --rewrite-paths"
   },
   "devDependencies": {
     "wsrun": "^5.2.4"
