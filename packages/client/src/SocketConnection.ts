@@ -91,7 +91,7 @@ export class SocketConnection {
 
     private transformRelativeUrl() {
         if (!this.url.includes("://")) {
-            this.url = `${location.origin.replace(/^http/, 'ws')}/${this.url}`;
+            this.url = `${location.origin.replace(/^http/, 'ws')}/${this.url.replace(/^\/+/, "")}`;
         }
     }
 }
