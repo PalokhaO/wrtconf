@@ -1,6 +1,6 @@
 {
   "name": "@palokhao/wrtconf-models",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "WRTConf models",
   "main": "output/index.js",
   "types": "output/index.d.ts",

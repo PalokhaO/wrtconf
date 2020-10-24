@@ -1,6 +1,6 @@
 {
   "name": "wrtconf",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Simple WebRTC conference coordinator",
   "main": "index.js",
   "repository": "https://github.com/PalokhaO/wrtconf",
@@ -15,7 +15,7 @@
     "start": "yarn wsrun start",
     "bump-workspace": "yarn version patch -d",
     "bump": "yarn bump-workspace && yarn wsrun bump && yarn version apply --all",
-    "release": "yarn bump && yarn wsrun release",
+    "release": "yarn bump && yarn build && yarn wsrun release",
     "wsrun": "wsrun -m -t --rewrite-paths"
   },
   "devDependencies": {
