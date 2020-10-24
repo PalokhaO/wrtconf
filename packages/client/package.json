@@ -1,6 +1,6 @@
 {
   "name": "@palokhao/wrtconf-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "WRTConf server",
   "main": "output/index.js",
   "types": "output/index.d.ts",
