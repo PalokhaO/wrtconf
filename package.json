@@ -1,16 +1,24 @@
 {
   "name": "wrtconf",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "Simple WebRTC conference coordinator",
   "main": "index.js",
   "repository": "https://github.com/PalokhaO/wrtconf",
   "author": "Oleksandr Palokha <palokha.oa@gmail.com>",
   "license": "MIT",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "cd packages/server && yarn build && cd ../client && yarn build",
-    "start": "cd packages/test-project && yarn start",
-    "publish": "cd packages/server && yarn publish && cd ../client && yarn publish && cd ../models && yarn publish"
+    "build": "yarn wsrun build",
+    "start": "yarn wsrun start",
+    "bump-workspace": "yarn version patch -d",
+    "bump": "yarn bump-workspace && yarn wsrun bump && yarn version apply --all",
+    "release": "yarn bump && yarn wsrun release",
+    "wsrun": "wsrun -m -t --rewrite-paths"
+  },
+  "devDependencies": {
+    "wsrun": "^5.2.4"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@palokhao/wrtconf-client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "WRTConf server",
   "main": "output/index.js",
   "types": "output/index.d.ts",
@@ -9,7 +9,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "bump": "yarn version patch -d",
+    "release": "yarn npm publish"
   },
   "repository": {
     "type": "git",
@@ -26,7 +28,7 @@
   },
   "homepage": "https://github.com/PalokhaO/wrtconf#readme",
   "devDependencies": {
-    "@palokhao/wrtconf-models": "0.0.1",
+    "@palokhao/wrtconf-models": "workspace:0.0.3",
     "tslib": "^2.0.1",
     "typescript": "^4.0.2"
   },
