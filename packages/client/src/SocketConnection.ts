@@ -8,6 +8,7 @@ export class SocketConnection {
     connect$ = new Subject<void>();
 
     constructor(private url: string, private meta?: string) {
+        this.transformRelativeUrl();
         this.initSocket();
     }
     
@@ -86,5 +87,11 @@ export class SocketConnection {
             socket.onopen = res;
             socket.onerror = rej;
         });
+    }
+
+    private transformRelativeUrl() {
+        if (!this.url.includes("://")) {
+            this.url = `${location.origin.replace(/^http/, 'ws')}/${this.url}`;
+        }
     }
 }

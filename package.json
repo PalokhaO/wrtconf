@@ -1,6 +1,6 @@
 {
   "name": "wrtconf",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Simple WebRTC conference coordinator",
   "main": "index.js",
   "repository": "https://github.com/PalokhaO/wrtconf",
