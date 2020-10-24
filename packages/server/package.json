@@ -1,6 +1,6 @@
 {
-  "name": "wrtconf-server",
-  "version": "1.0.2",
+  "name": "@palokhao/wrtconf-server",
+  "version": "1.0.1",
   "description": "WRTConf server",
   "main": "output/index.js",
   "types": "output/index.d.ts",
@@ -10,7 +10,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PalokhaO/wrtconf.git"
+    "url": "git+https://github.com/PalokhaO/wrtconf.git",
+    "directory": "packages/server"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
@@ -22,9 +23,9 @@
   },
   "homepage": "https://github.com/PalokhaO/wrtconf#readme",
   "devDependencies": {
+    "@palokhao/wrtconf-models": "1.0.0",
     "tslib": "^2.0.1",
-    "typescript": "^4.0.2",
-    "wrtconf-models": "1.0.0"
+    "typescript": "^4.0.2"
   },
   "dependencies": {
     "@types/uuid": "^8.3.0",
