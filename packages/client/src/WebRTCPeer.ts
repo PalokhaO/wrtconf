@@ -1,7 +1,9 @@
 import { SignallingPeer, StreamConstraints } from "@palokhao/wrtconf-models";
 
 export class WebRTCPeer {
-
+    get id() {
+        return this.signallingPeer?.id;
+    }
     signallingPeer: SignallingPeer;
     receptionConstraints: StreamConstraints;
     transmissionConstraints: StreamConstraints;

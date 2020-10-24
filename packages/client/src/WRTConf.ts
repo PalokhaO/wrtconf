@@ -28,7 +28,9 @@ export class WRTConf extends EventEmitter<WRTConfEvents> {
         this.socketConnection.message$.subscribe(m => this.handleMessage(m));
         this.socketConnection.connect$.subscribe(() => this.resetConnectionStatus());
 
-        this.updateLocalStream(params?.source);
+        if (params?.source) {
+            this.updateLocalStream(params.source);
+        }
         this.updateReceptionConstraints(params?.defaultConstraints, true);
     }
 
