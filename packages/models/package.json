@@ -1,14 +1,20 @@
 {
-  "name": "wrtconf-models",
-  "version": "1.0.0",
-  "description": "WRTConf server",
-  "types": "index.d.ts",
+  "name": "@palokhao/wrtconf-models",
+  "version": "0.0.1",
+  "description": "WRTConf models",
+  "main": "output/index.js",
+  "types": "output/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PalokhaO/wrtconf.git"
+    "url": "git+https://github.com/PalokhaO/wrtconf.git",
+    "directory": "packages/models"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "author": "Palokha Oleksandr",
   "license": "MIT",

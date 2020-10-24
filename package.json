@@ -1,6 +1,6 @@
 {
   "name": "wrtconf",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Simple WebRTC conference coordinator",
   "main": "index.js",
   "repository": "https://github.com/PalokhaO/wrtconf",
@@ -10,6 +10,7 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "cd packages/server && yarn build && cd ../client && yarn build",
-    "start": "cd packages/test-project && yarn start"
+    "start": "cd packages/test-project && yarn start",
+    "publish": "cd packages/server && yarn publish && cd ../client && yarn publish && cd ../models && yarn publish"
   }
 }

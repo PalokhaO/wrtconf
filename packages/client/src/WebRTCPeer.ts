@@ -1,4 +1,4 @@
-import { SignallingPeer, StreamConstraints } from "wrtconf-models";
+import { SignallingPeer, StreamConstraints } from "@palokhao/wrtconf-models";
 
 export class WebRTCPeer {
 
