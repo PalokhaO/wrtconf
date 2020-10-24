@@ -1,5 +1,5 @@
 import express from 'express';
-import pkg from '@wrtconf/server';
+import pkg from 'wrtconf-server';
 const { WRTConfServer } = pkg;
 import browserify from 'browserify';
 

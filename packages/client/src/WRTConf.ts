@@ -1,4 +1,4 @@
-import { ClientMessage, ServerAnswerMessage, ServerCandidateMessage, ServerConstraintsMessage, ServerMessage, ServerOfferMessage, SignallingPeer, StreamConstraints } from "@wrtconf/models";
+import { ClientMessage, ServerAnswerMessage, ServerCandidateMessage, ServerConstraintsMessage, ServerMessage, ServerOfferMessage, SignallingPeer, StreamConstraints } from "wrtconf-models";
 import { Subject } from "rxjs";
 import { EventEmitter } from "./EventEmitter";
 import { SocketConnection } from "./SocketConnection";

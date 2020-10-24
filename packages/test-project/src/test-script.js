@@ -1,4 +1,4 @@
-const { WRTConf } = require('@wrtconf/client');
+const { WRTConf } = require('wrtconf-client');
 
 function createVideo(id) {
     const video = document.createElement('video');

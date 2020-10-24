@@ -1,5 +1,5 @@
 {
-  "name": "@wrtconf/models",
+  "name": "wrtconf-models",
   "version": "1.0.0",
   "description": "WRTConf server",
   "types": "index.d.ts",
