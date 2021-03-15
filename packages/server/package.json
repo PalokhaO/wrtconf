@@ -1,5 +1,5 @@
 {
-  "name": "@palokhao/wrtconf-server",
+  "name": "wrtconf-server",
   "version": "0.0.8",
   "description": "WRTConf server",
   "main": "output/index.js",
@@ -10,14 +10,6 @@
     "bump": "yarn version patch -d",
     "release": "yarn npm publish"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/PalokhaO/wrtconf.git",
-    "directory": "packages/server"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "author": "Palokha Oleksandr",
   "license": "MIT",
   "bugs": {
@@ -25,7 +17,7 @@
   },
   "homepage": "https://github.com/PalokhaO/wrtconf#readme",
   "devDependencies": {
-    "@palokhao/wrtconf-models": "workspace:0.0.8",
+    "wrtconf-models": "0.0.8",
     "tslib": "^2.0.1",
     "typescript": "^4.0.2"
   },

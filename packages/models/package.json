@@ -1,5 +1,5 @@
 {
-  "name": "@palokhao/wrtconf-models",
+  "name": "wrtconf-models",
   "version": "0.0.8",
   "description": "WRTConf models",
   "main": "output/index.js",
@@ -8,14 +8,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "bump": "yarn version patch -d",
     "release": "yarn npm publish"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/PalokhaO/wrtconf.git",
-    "directory": "packages/models"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   },
   "author": "Palokha Oleksandr",
   "license": "MIT",

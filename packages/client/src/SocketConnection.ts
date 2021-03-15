@@ -1,4 +1,4 @@
-import { ClientMessage, ServerMessage } from '@palokhao/wrtconf-models';
+import { ClientMessage, ServerMessage } from 'wrtconf-models';
 import { fromEvent, merge, Subject, throwError } from 'rxjs';
 import { debounceTime, delay, filter, first, map, share, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 
