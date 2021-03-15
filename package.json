@@ -18,7 +18,7 @@
     "release": "yarn bump && yarn build && yarn wsrun release",
     "wsrun": "wsrun -m -t -e --rewrite-paths"
   },
-  "devDependencies": {
+  "dependencies": {
     "wsrun": "^5.2.4"
   }
 }
